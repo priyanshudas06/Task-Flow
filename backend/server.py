@@ -262,12 +262,12 @@ async def get_tasks(current_user: dict = Depends(get_current_user)):
             {"assigned_to": current_user["id"]},
             {"assigned_by": current_user["id"]}
         ]
-    }).to_list(1000)
+    }, {"_id": 0}).to_list(1000)
     
     # Populate user info
     for task in tasks:
-        assigned_by_user = await db.users.find_one({"id": task["assigned_by"]})
-        assigned_to_user = await db.users.find_one({"id": task["assigned_to"]})
+        assigned_by_user = await db.users.find_one({"id": task["assigned_by"]}, {"_id": 0})
+        assigned_to_user = await db.users.find_one({"id": task["assigned_to"]}, {"_id": 0})
         
         task["assigned_by_user"] = {
             "id": assigned_by_user["id"],
