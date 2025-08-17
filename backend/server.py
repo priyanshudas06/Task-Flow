@@ -185,7 +185,7 @@ async def register(user_data: UserCreate):
 
 @api_router.post("/auth/login")
 async def login(login_data: UserLogin):
-    user = await db.users.find_one({"email": login_data.email})
+    user = await db.users.find_one({"email": login_data.email}, {"_id": 0})
     if not user or not verify_password(login_data.password, user["password_hash"]):
         raise HTTPException(status_code=400, detail="Invalid credentials")
     
