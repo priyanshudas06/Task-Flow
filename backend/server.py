@@ -331,7 +331,7 @@ async def update_task(task_id: str, task_update: TaskUpdate, current_user: dict 
 
 @api_router.post("/tasks/{task_id}/comments")
 async def add_comment(task_id: str, comment_data: CommentCreate, current_user: dict = Depends(get_current_user)):
-    task = await db.tasks.find_one({"id": task_id})
+    task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
