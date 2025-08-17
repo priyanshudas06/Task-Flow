@@ -313,7 +313,7 @@ async def get_task(task_id: str, current_user: dict = Depends(get_current_user))
 
 @api_router.patch("/tasks/{task_id}")
 async def update_task(task_id: str, task_update: TaskUpdate, current_user: dict = Depends(get_current_user)):
-    task = await db.tasks.find_one({"id": task_id})
+    task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
@@ -326,7 +326,7 @@ async def update_task(task_id: str, task_update: TaskUpdate, current_user: dict 
     
     await db.tasks.update_one({"id": task_id}, {"$set": update_data})
     
-    updated_task = await db.tasks.find_one({"id": task_id})
+    updated_task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
     return updated_task
 
 @api_router.post("/tasks/{task_id}/comments")
