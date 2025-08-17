@@ -234,7 +234,7 @@ async def get_users(current_user: dict = Depends(get_current_user)):
 @api_router.post("/tasks")
 async def create_task(task_data: TaskCreate, current_user: dict = Depends(get_current_user)):
     # Get assignee user to check if assignment is allowed
-    assignee = await db.users.find_one({"id": task_data.assigned_to})
+    assignee = await db.users.find_one({"id": task_data.assigned_to}, {"_id": 0})
     if not assignee:
         raise HTTPException(status_code=404, detail="Assignee not found")
     
