@@ -447,6 +447,98 @@ const Dashboard = () => {
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="team-overview" className="space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900">Team Overview</h2>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {users
+                .filter(u => u.role_level <= user.role_level)
+                .sort((a, b) => b.role_level - a.role_level)
+                .map((teamMember) => {
+                  const memberTasks = tasks.filter(t => t.assigned_to === teamMember.id);
+                  const completedTasks = memberTasks.filter(t => t.status === 'completed').length;
+                  const inProgressTasks = memberTasks.filter(t => t.status === 'in_progress').length;
+                  const assignedTasks = memberTasks.filter(t => t.status === 'assigned').length;
+
+                  const getRoleDisplayName = (role) => {
+                    return role.split('_').map(word => 
+                      word.charAt(0).toUpperCase() + word.slice(1)
+                    ).join(' ');
+                  };
+
+                  const getRoleBadgeColor = (role) => {
+                    const roleColors = {
+                      'senior_manager': 'bg-purple-100 text-purple-800',
+                      'manager': 'bg-blue-100 text-blue-800',
+                      'team_lead': 'bg-green-100 text-green-800',
+                      'senior_architect': 'bg-indigo-100 text-indigo-800',
+                      'architect': 'bg-cyan-100 text-cyan-800',
+                      'senior_developer': 'bg-orange-100 text-orange-800',
+                      'developer': 'bg-yellow-100 text-yellow-800',
+                      'intern': 'bg-gray-100 text-gray-800'
+                    };
+                    return roleColors[role] || 'bg-gray-100 text-gray-800';
+                  };
+
+                  return (
+                    <Card key={teamMember.id} className="hover:shadow-md transition-shadow">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
+                            {teamMember.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                          </div>
+                          <div className="flex-1">
+                            <CardTitle className="text-base">{teamMember.name}</CardTitle>
+                            <CardDescription>{teamMember.email}</CardDescription>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center mt-2">
+                          <Badge className={getRoleBadgeColor(teamMember.role)}>
+                            {getRoleDisplayName(teamMember.role)}
+                          </Badge>
+                          <span className="text-xs text-gray-500">Level {teamMember.role_level}</span>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600">Total Tasks:</span>
+                            <span className="font-medium">{memberTasks.length}</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            <div className="text-center p-2 bg-blue-50 rounded">
+                              <div className="font-medium text-blue-700">{assignedTasks}</div>
+                              <div className="text-blue-600">Assigned</div>
+                            </div>
+                            <div className="text-center p-2 bg-orange-50 rounded">
+                              <div className="font-medium text-orange-700">{inProgressTasks}</div>
+                              <div className="text-orange-600">In Progress</div>
+                            </div>
+                            <div className="text-center p-2 bg-green-50 rounded">
+                              <div className="font-medium text-green-700">{completedTasks}</div>
+                              <div className="text-green-600">Completed</div>
+                            </div>
+                          </div>
+                          {memberTasks.length > 0 && (
+                            <div className="mt-2">
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-green-500 h-2 rounded-full" 
+                                  style={{ width: `${(completedTasks / memberTasks.length) * 100}%` }}
+                                ></div>
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                {Math.round((completedTasks / memberTasks.length) * 100)}% Complete
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+            </div>
+          </TabsContent>
         </Tabs>
       </main>
     </div>
