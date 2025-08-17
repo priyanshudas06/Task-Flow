@@ -641,12 +641,40 @@ const CreateTaskDialog = ({ users, currentUser, onTaskCreated }) => {
     due_date: null
   });
   const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Filter users based on hierarchy
   const assignableUsers = users.filter(user => {
     if (user.id === currentUser.id) return false;
     return user.role_level <= currentUser.role_level;
   });
+
+  // Filter users based on search term
+  const filteredUsers = assignableUsers.filter(user =>
+    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const getRoleDisplayName = (role) => {
+    return role.split('_').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+  };
+
+  const getRoleBadgeColor = (role) => {
+    const roleColors = {
+      'senior_manager': 'bg-purple-100 text-purple-800',
+      'manager': 'bg-blue-100 text-blue-800',
+      'team_lead': 'bg-green-100 text-green-800',
+      'senior_architect': 'bg-indigo-100 text-indigo-800',
+      'architect': 'bg-cyan-100 text-cyan-800',
+      'senior_developer': 'bg-orange-100 text-orange-800',
+      'developer': 'bg-yellow-100 text-yellow-800',
+      'intern': 'bg-gray-100 text-gray-800'
+    };
+    return roleColors[role] || 'bg-gray-100 text-gray-800';
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
