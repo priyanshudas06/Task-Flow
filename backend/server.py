@@ -218,7 +218,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 # User management routes
 @api_router.get("/users", response_model=List[UserResponse])
 async def get_users(current_user: dict = Depends(get_current_user)):
-    users = await db.users.find().to_list(1000)
+    users = await db.users.find({}, {"_id": 0}).to_list(1000)
     return [
         UserResponse(
             id=user["id"],
