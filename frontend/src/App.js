@@ -635,13 +635,17 @@ const TaskCard = ({ task, currentUser, onTaskUpdated }) => {
         <div className="space-y-4">
           <div className="flex items-center justify-between text-sm text-gray-600">
             <div className="flex items-center space-x-4">
-              <div className="flex items-center">
-                <User className="h-4 w-4 mr-1" />
-                <span>From: {task.assigned_by_user?.name}</span>
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">
+                  {task.assigned_by_user?.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                </div>
+                <span>From: <span className="font-medium">{task.assigned_by_user?.name}</span></span>
               </div>
-              <div className="flex items-center">
-                <User className="h-4 w-4 mr-1" />
-                <span>To: {task.assigned_to_user?.name}</span>
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">
+                  {task.assigned_to_user?.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                </div>
+                <span>To: <span className="font-medium">{task.assigned_to_user?.name}</span></span>
               </div>
             </div>
             {task.due_date && (
