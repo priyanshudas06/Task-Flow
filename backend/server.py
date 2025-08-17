@@ -285,7 +285,7 @@ async def get_tasks(current_user: dict = Depends(get_current_user)):
 
 @api_router.get("/tasks/{task_id}")
 async def get_task(task_id: str, current_user: dict = Depends(get_current_user)):
-    task = await db.tasks.find_one({"id": task_id})
+    task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
@@ -294,8 +294,8 @@ async def get_task(task_id: str, current_user: dict = Depends(get_current_user))
         raise HTTPException(status_code=403, detail="Access denied")
     
     # Populate user info
-    assigned_by_user = await db.users.find_one({"id": task["assigned_by"]})
-    assigned_to_user = await db.users.find_one({"id": task["assigned_to"]})
+    assigned_by_user = await db.users.find_one({"id": task["assigned_by"]}, {"_id": 0})
+    assigned_to_user = await db.users.find_one({"id": task["assigned_to"]}, {"_id": 0})
     
     task["assigned_by_user"] = {
         "id": assigned_by_user["id"],
