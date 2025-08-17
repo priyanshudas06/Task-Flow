@@ -396,9 +396,10 @@ const Dashboard = () => {
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <div className="flex justify-between items-center">
-            <TabsList className="grid w-fit grid-cols-2">
+            <TabsList className="grid w-fit grid-cols-3">
               <TabsTrigger value="my-tasks">My Tasks ({assignedToMe.length})</TabsTrigger>
               <TabsTrigger value="assigned-tasks">Assigned by Me ({assignedByMe.length})</TabsTrigger>
+              <TabsTrigger value="team-overview">Team Overview</TabsTrigger>
             </TabsList>
             <CreateTaskDialog users={users} currentUser={user} onTaskCreated={fetchTasks} />
           </div>
