@@ -738,18 +738,79 @@ const CreateTaskDialog = ({ users, currentUser, onTaskCreated }) => {
           </div>
           <div className="space-y-2">
             <Label htmlFor="assigned_to">Assign To</Label>
-            <Select value={formData.assigned_to} onValueChange={(value) => handleChange('assigned_to', value)} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Select team member" />
-              </SelectTrigger>
-              <SelectContent>
-                {assignableUsers.map((user) => (
-                  <SelectItem key={user.id} value={user.id}>
-                    {user.name} ({user.role.replace('_', ' ')})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-3">
+              {/* Search functionality */}
+              <div className="relative">
+                <Input
+                  placeholder="Search team members..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8"
+                />
+                <User className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+              </div>
+
+              {/* User selection cards */}
+              <div className="max-h-64 overflow-y-auto space-y-2 border rounded-lg p-2">
+                {filteredUsers.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">
+                    {searchTerm ? 'No users found matching your search' : 'No assignable team members'}
+                  </div>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <div
+                      key={user.id}
+                      className={`p-3 border rounded-lg cursor-pointer transition-colors hover:bg-gray-50 ${
+                        formData.assigned_to === user.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                      }`}
+                      onClick={() => handleChange('assigned_to', user.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          {/* Avatar placeholder */}
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
+                            {user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{user.name}</p>
+                            <p className="text-sm text-gray-500">{user.email}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end space-y-1">
+                          <Badge className={getRoleBadgeColor(user.role)}>
+                            {getRoleDisplayName(user.role)}
+                          </Badge>
+                          <span className="text-xs text-gray-400">Level {user.role_level}</span>
+                        </div>
+                      </div>
+                      {formData.assigned_to === user.id && (
+                        <div className="mt-2 flex items-center text-blue-600 text-sm">
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Selected for assignment
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Selected user summary */}
+              {formData.assigned_to && (
+                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                  {(() => {
+                    const selectedUser = users.find(u => u.id === formData.assigned_to);
+                    return selectedUser ? (
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-800">
+                          Task will be assigned to: {selectedUser.name} ({getRoleDisplayName(selectedUser.role)})
+                        </span>
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+              )}
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="priority">Priority</Label>
