@@ -1,54 +1,812 @@
-import { useEffect } from "react";
-import "./App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
+import React, { useState, useEffect, createContext, useContext } from 'react';
+import './App.css';
+import axios from 'axios';
+import { Button } from './components/ui/button';
+import { Input } from './components/ui/input';
+import { Label } from './components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { Badge } from './components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
+import { Textarea } from './components/ui/textarea';
+import { Calendar } from './components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover';
+import { format } from 'date-fns';
+import { Calendar as CalendarIcon, Plus, MessageSquare, Clock, User, CheckCircle, AlertCircle, Circle } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const Home = () => {
-  const helloWorldApi = async () => {
+// Context for authentication
+const AuthContext = createContext();
+
+const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      fetchCurrentUser();
+    } else {
+      setLoading(false);
+    }
+  }, [token]);
+
+  const fetchCurrentUser = async () => {
     try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
+      const response = await axios.get(`${API}/auth/me`);
+      setUser(response.data);
+    } catch (error) {
+      console.error('Failed to fetch current user:', error);
+      logout();
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
+  const login = async (email, password) => {
+    try {
+      const response = await axios.post(`${API}/auth/login`, { email, password });
+      const { access_token, user: userData } = response.data;
+      
+      localStorage.setItem('token', access_token);
+      setToken(access_token);
+      setUser(userData);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+      
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.response?.data?.detail || 'Login failed' };
+    }
+  };
+
+  const register = async (userData) => {
+    try {
+      const response = await axios.post(`${API}/auth/register`, userData);
+      const { access_token, user: userInfo } = response.data;
+      
+      localStorage.setItem('token', access_token);
+      setToken(access_token);
+      setUser(userInfo);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+      
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.response?.data?.detail || 'Registration failed' };
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem('token');
+    setToken(null);
+    setUser(null);
+    delete axios.defaults.headers.common['Authorization'];
+  };
 
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
+    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+const Login = ({ onSwitchToRegister }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    const result = await login(email, password);
+    if (!result.success) {
+      setError(result.error);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">TaskFlow</CardTitle>
+          <CardDescription className="text-center">
+            Sign in to your account
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            {error && (
+              <div className="text-red-600 text-sm">{error}</div>
+            )}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Signing in...' : 'Sign In'}
+            </Button>
+          </form>
+          <div className="mt-4 text-center">
+            <button
+              onClick={onSwitchToRegister}
+              className="text-blue-600 hover:underline text-sm"
+            >
+              Don't have an account? Sign up
+            </button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
 
-function App() {
+const Register = ({ onSwitchToLogin }) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: ''
+  });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { register } = useAuth();
+
+  const roles = [
+    { value: 'senior_manager', label: 'Senior Manager' },
+    { value: 'manager', label: 'Manager' },
+    { value: 'team_lead', label: 'Team Lead' },
+    { value: 'senior_architect', label: 'Senior Architect' },
+    { value: 'architect', label: 'Architect' },
+    { value: 'senior_developer', label: 'Senior Developer' },
+    { value: 'developer', label: 'Developer' },
+    { value: 'intern', label: 'Intern' }
+  ];
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    const result = await register(formData);
+    if (!result.success) {
+      setError(result.error);
+    }
+    setLoading(false);
+  };
+
+  const handleChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
   return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">TaskFlow</CardTitle>
+          <CardDescription className="text-center">
+            Create your account
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                type="text"
+                value={formData.name}
+                onChange={(e) => handleChange('name', e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleChange('email', e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="role">Role</Label>
+              <Select value={formData.role} onValueChange={(value) => handleChange('role', value)} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map((role) => (
+                    <SelectItem key={role.value} value={role.value}>
+                      {role.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={formData.password}
+                onChange={(e) => handleChange('password', e.target.value)}
+                required
+              />
+            </div>
+            {error && (
+              <div className="text-red-600 text-sm">{error}</div>
+            )}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Creating account...' : 'Sign Up'}
+            </Button>
+          </form>
+          <div className="mt-4 text-center">
+            <button
+              onClick={onSwitchToLogin}
+              className="text-blue-600 hover:underline text-sm"
+            >
+              Already have an account? Sign in
+            </button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
+};
+
+const Dashboard = () => {
+  const { user, logout } = useAuth();
+  const [tasks, setTasks] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('my-tasks');
+
+  useEffect(() => {
+    fetchTasks();
+    fetchUsers();
+  }, []);
+
+  const fetchTasks = async () => {
+    try {
+      const response = await axios.get(`${API}/tasks`);
+      setTasks(response.data);
+    } catch (error) {
+      console.error('Failed to fetch tasks:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const response = await axios.get(`${API}/users`);
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
+
+  const assignedToMe = tasks.filter(task => task.assigned_to === user.id);
+  const assignedByMe = tasks.filter(task => task.assigned_by === user.id);
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'in_progress':
+        return <AlertCircle className="h-4 w-4 text-orange-600" />;
+      default:
+        return <Circle className="h-4 w-4 text-gray-600" />;
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'in_progress':
+        return 'bg-orange-100 text-orange-800';
+      case 'assigned':
+        return 'bg-blue-100 text-blue-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'high':
+        return 'bg-red-100 text-red-800';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'low':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <h1 className="text-xl font-bold text-gray-900">TaskFlow</h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="text-sm">
+                <p className="font-medium text-gray-900">{user.name}</p>
+                <p className="text-gray-500 capitalize">{user.role.replace('_', ' ')}</p>
+              </div>
+              <Button variant="outline" onClick={logout}>
+                Logout
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <div className="flex justify-between items-center">
+            <TabsList className="grid w-fit grid-cols-2">
+              <TabsTrigger value="my-tasks">My Tasks ({assignedToMe.length})</TabsTrigger>
+              <TabsTrigger value="assigned-tasks">Assigned by Me ({assignedByMe.length})</TabsTrigger>
+            </TabsList>
+            <CreateTaskDialog users={users} currentUser={user} onTaskCreated={fetchTasks} />
+          </div>
+
+          <TabsContent value="my-tasks" className="space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900">Tasks Assigned to Me</h2>
+            {assignedToMe.length === 0 ? (
+              <Card>
+                <CardContent className="flex items-center justify-center h-32">
+                  <p className="text-gray-500">No tasks assigned to you yet.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                {assignedToMe.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    currentUser={user}
+                    onTaskUpdated={fetchTasks}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="assigned-tasks" className="space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900">Tasks I Assigned</h2>
+            {assignedByMe.length === 0 ? (
+              <Card>
+                <CardContent className="flex items-center justify-center h-32">
+                  <p className="text-gray-500">You haven't assigned any tasks yet.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                {assignedByMe.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    currentUser={user}
+                    onTaskUpdated={fetchTasks}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </main>
+    </div>
+  );
+};
+
+const TaskCard = ({ task, currentUser, onTaskUpdated }) => {
+  const [showComments, setShowComments] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [newStatus, setNewStatus] = useState(task.status);
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'in_progress':
+        return <AlertCircle className="h-4 w-4 text-orange-600" />;
+      default:
+        return <Circle className="h-4 w-4 text-gray-600" />;
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'in_progress':
+        return 'bg-orange-100 text-orange-800';
+      case 'assigned':
+        return 'bg-blue-100 text-blue-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'high':
+        return 'bg-red-100 text-red-800';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'low':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const handleStatusUpdate = async () => {
+    if (newStatus === task.status) return;
+
+    try {
+      await axios.patch(`${API}/tasks/${task.id}`, { status: newStatus });
+      onTaskUpdated();
+    } catch (error) {
+      console.error('Failed to update task status:', error);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!newComment.trim()) return;
+
+    try {
+      await axios.post(`${API}/tasks/${task.id}/comments`, { text: newComment });
+      setNewComment('');
+      onTaskUpdated();
+    } catch (error) {
+      console.error('Failed to add comment:', error);
+    }
+  };
+
+  return (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <CardTitle className="text-lg">{task.title}</CardTitle>
+            <CardDescription className="mt-2">{task.description}</CardDescription>
+          </div>
+          <div className="flex flex-col items-end space-y-2">
+            <div className="flex space-x-2">
+              <Badge className={getStatusColor(task.status)}>
+                {getStatusIcon(task.status)}
+                <span className="ml-1 capitalize">{task.status.replace('_', ' ')}</span>
+              </Badge>
+              <Badge className={getPriorityColor(task.priority)}>
+                {task.priority}
+              </Badge>
+            </div>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center">
+                <User className="h-4 w-4 mr-1" />
+                <span>From: {task.assigned_by_user?.name}</span>
+              </div>
+              <div className="flex items-center">
+                <User className="h-4 w-4 mr-1" />
+                <span>To: {task.assigned_to_user?.name}</span>
+              </div>
+            </div>
+            {task.due_date && (
+              <div className="flex items-center">
+                <Clock className="h-4 w-4 mr-1" />
+                <span>Due: {format(new Date(task.due_date), 'MMM dd, yyyy')}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Status Update */}
+          {task.assigned_to === currentUser.id && (
+            <div className="flex items-center space-x-2">
+              <Label htmlFor="status">Update Status:</Label>
+              <Select value={newStatus} onValueChange={setNewStatus}>
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="assigned">Assigned</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+              {newStatus !== task.status && (
+                <Button size="sm" onClick={handleStatusUpdate}>
+                  Update
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* Comments Section */}
+          <div className="border-t pt-4">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-medium">Comments ({task.comments?.length || 0})</h4>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowComments(!showComments)}
+              >
+                <MessageSquare className="h-4 w-4 mr-1" />
+                {showComments ? 'Hide' : 'Show'}
+              </Button>
+            </div>
+
+            {showComments && (
+              <div className="space-y-3">
+                {task.comments?.map((comment, index) => (
+                  <div key={index} className="bg-gray-50 rounded-lg p-3">
+                    <div className="flex justify-between items-start mb-1">
+                      <span className="font-medium text-sm">
+                        {comment.author === currentUser.id ? 'You' : 'User'}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {format(new Date(comment.timestamp), 'MMM dd, HH:mm')}
+                      </span>
+                    </div>
+                    <p className="text-sm">{comment.text}</p>
+                  </div>
+                ))}
+
+                <div className="flex space-x-2">
+                  <Textarea
+                    placeholder="Add a comment..."
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    className="flex-1 min-h-[60px]"
+                  />
+                  <Button onClick={handleAddComment} disabled={!newComment.trim()}>
+                    Add
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const CreateTaskDialog = ({ users, currentUser, onTaskCreated }) => {
+  const [open, setOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    assigned_to: '',
+    priority: 'medium',
+    due_date: null
+  });
+  const [loading, setLoading] = useState(false);
+
+  // Filter users based on hierarchy
+  const assignableUsers = users.filter(user => {
+    if (user.id === currentUser.id) return false;
+    return user.role_level <= currentUser.role_level;
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      await axios.post(`${API}/tasks`, formData);
+      setFormData({
+        title: '',
+        description: '',
+        assigned_to: '',
+        priority: 'medium',
+        due_date: null
+      });
+      setOpen(false);
+      onTaskCreated();
+    } catch (error) {
+      console.error('Failed to create task:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Task
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[525px]">
+        <DialogHeader>
+          <DialogTitle>Create New Task</DialogTitle>
+          <DialogDescription>
+            Assign a new task to a team member.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="title">Title</Label>
+            <Input
+              id="title"
+              value={formData.title}
+              onChange={(e) => handleChange('title', e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => handleChange('description', e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="assigned_to">Assign To</Label>
+            <Select value={formData.assigned_to} onValueChange={(value) => handleChange('assigned_to', value)} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Select team member" />
+              </SelectTrigger>
+              <SelectContent>
+                {assignableUsers.map((user) => (
+                  <SelectItem key={user.id} value={user.id}>
+                    {user.name} ({user.role.replace('_', ' ')})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="priority">Priority</Label>
+            <Select value={formData.priority} onValueChange={(value) => handleChange('priority', value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Due Date (Optional)</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {formData.due_date ? format(formData.due_date, 'PPP') : 'Pick a date'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={formData.due_date}
+                  onSelect={(date) => handleChange('due_date', date)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Creating...' : 'Create Task'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+function App() {
+  const [isLogin, setIsLogin] = useState(true);
+
+  return (
+    <AuthProvider>
+      <div className="App">
+        <AuthContent isLogin={isLogin} setIsLogin={setIsLogin} />
+      </div>
+    </AuthProvider>
+  );
 }
+
+const AuthContent = ({ isLogin, setIsLogin }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (user) {
+    return <Dashboard />;
+  }
+
+  return isLogin ? (
+    <Login onSwitchToRegister={() => setIsLogin(false)} />
+  ) : (
+    <Register onSwitchToLogin={() => setIsLogin(true)} />
+  );
+};
 
 export default App;
